@@ -199,7 +199,7 @@ Without code signing, macOS shows a warning on first launch. The user can bypass
 | `npm run make` fails | Delete `node_modules/` and `out/`, then `npm install && npm run make` |
 | `GITHUB_TOKEN` error on publish | Use `GITHUB_TOKEN=$(gh auth token) npm run publish` |
 | DMG won't open on another Mac | Built for arm64 (Apple Silicon). Intel Macs need `--arch=x64` |
-| "App is damaged" error | Right-click → Open → Open. Or: `xattr -cr /Applications/LogicMonkey.app` |
+| "App is damaged" error | This is macOS Gatekeeper blocking unsigned apps. **Fix:** Open Terminal, run `xattr -cr /Applications/LogicMonkey.app`, then open normally. Must be done before first launch. |
 | App window is blank | Check `src/index.html` and `src/renderer.js` exist |
 | Update banner doesn't appear | App must be installed from a built `.dmg` (not `npm start`). Also needs internet. |
 
