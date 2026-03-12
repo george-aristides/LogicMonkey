@@ -1,6 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
-  onUpdateAvailable: (callback) => ipcRenderer.on('update-available', (_event, version) => callback(version)),
-  openReleases: () => ipcRenderer.send('open-releases'),
+  checkForUpdate: () => ipcRenderer.invoke('check-for-update'),
+  installUpdate: (dmgUrl) => ipcRenderer.invoke('install-update', dmgUrl),
+  onDownloadProgress: (callback) => ipcRenderer.on('download-progress', (_event, percent) => callback(percent)),
 });
