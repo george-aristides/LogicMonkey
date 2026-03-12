@@ -1,13 +1,15 @@
-# Test App — Full Documentation
+# LogicMonkey — Full Documentation
 
 ## Overview
 
 This is a minimal Electron desktop app (macOS only) built to test the full distribution pipeline:
-build → distribute → install. The app has a single button that toggles between dark and light themes.
+build → distribute via GitHub Releases → install → auto-update. The app has a single button that toggles between dark and light themes.
 
 **Framework:** Electron (v41) with Electron Forge + Webpack
 **Target:** macOS (Apple Silicon arm64)
 **Output:** `.dmg` disk image for drag-to-Applications install
+**Repo:** https://github.com/george-aristides/LogicMonkey
+**Download:** https://github.com/george-aristides/LogicMonkey/releases
 
 ---
 
@@ -16,12 +18,12 @@ build → distribute → install. The app has a single button that toggles betwe
 ```
 test-app/
 ├── src/
-│   ├── main.js           # Electron main process — creates the app window
-│   ├── preload.js        # Security bridge between main and renderer processes
-│   ├── renderer.js       # UI logic — theme toggle button handler
+│   ├── main.js           # Electron main process — window, auto-updater, IPC
+│   ├── preload.js        # Security bridge — exposes update API to renderer
+│   ├── renderer.js       # UI logic — theme toggle + update banner
 │   ├── index.html        # App HTML — heading + toggle button
-│   └── index.css         # Styles — light/dark themes, transitions
-├── forge.config.js       # Electron Forge config — build targets, makers, plugins
+│   └── index.css         # Styles — light/dark themes, update banner
+├── forge.config.js       # Electron Forge config — makers, plugins, GitHub publisher
 ├── webpack.main.config.js      # Webpack config for main process
 ├── webpack.renderer.config.js  # Webpack config for renderer process
 ├── webpack.rules.js            # Shared webpack loader rules
@@ -35,37 +37,49 @@ test-app/
 - Creates the browser window (800x600)
 - Loads the webpack-bundled HTML into it
 - Handles macOS-specific behavior (keep app alive when windows close, re-create window on dock click)
+- Checks GitHub Releases for updates on launch via `electron-updater`
+- Sends `update-available` message to the renderer when a new version exists
+- Listens for `open-releases` IPC message to open the download page in the browser
+
+**`src/preload.js`** — Security bridge between main and renderer processes. Exposes:
+- `electronAPI.onUpdateAvailable(callback)` — listen for update notifications
+- `electronAPI.openReleases()` — open GitHub Releases page in browser
 
 **`src/renderer.js`** — The "frontend" JavaScript. It:
 - Imports the CSS
 - Attaches a click listener to the toggle button that adds/removes the `dark` class on `<body>`
+- Listens for update notifications and shows a blue banner with a "Download" link
 
 **`src/index.html`** — The app UI. Contains only a heading and a button.
 
-**`src/index.css`** — Defines two states:
-- Default (light): white background, dark text
-- `.dark` class: dark background (#1e1e1e), white text
+**`src/index.css`** — Defines:
+- Light theme (default): white background, dark text
+- Dark theme (`.dark` class): dark background (#1e1e1e), white text
 - 0.3s CSS transition between states
+- Update banner styling (fixed blue bar at top of window)
 
-**`forge.config.js`** — Controls how the app is built and packaged:
-- `packagerConfig.asar: true` — bundles app source into an ASAR archive (faster loading, source protection)
-- `makers` array — defines output formats (DMG, ZIP, etc.)
+**`forge.config.js`** — Controls how the app is built, packaged, and published:
+- `packagerConfig.asar: true` — bundles source into an ASAR archive
+- `makers` — DMG and ZIP output formats
+- `publishers` — GitHub Releases (george-aristides/LogicMonkey, publishes as draft)
 - `plugins` — webpack bundling, security fuses
 
 ---
 
-## Prerequisites
+## Prerequisites (Developer Machine Only)
 
 | Requirement | How to install |
 |---|---|
 | macOS (Apple Silicon or Intel) | N/A |
 | Homebrew | `/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"` |
 | Node.js | `brew install node` |
+| GitHub CLI | `brew install gh` (then `gh auth login`) |
 
 Verify installation:
 ```bash
 node --version   # Should show v25.x.x or similar
 npm --version    # Should show v11.x.x or similar
+gh --version     # Should show v2.x.x or similar
 ```
 
 ---
@@ -78,7 +92,6 @@ All commands are run from inside the `test-app/` directory.
 ```bash
 npm install
 ```
-Downloads all packages listed in `package.json` into `node_modules/`.
 
 ### Run in development mode
 ```bash
@@ -87,120 +100,78 @@ npm start
 Opens the app in a window with hot-reload. Changes to `src/` files will auto-refresh.
 To enable DevTools, uncomment line 23 in `src/main.js`.
 
-### Build the .dmg
+### Build the .dmg (local only, no upload)
 ```bash
 npm run make
 ```
-**What this does:**
-1. Webpack bundles all source files
-2. Electron Packager creates the `.app` bundle with Electron runtime
-3. The DMG maker wraps it in a `.dmg` disk image
-
-**Output location:**
+**Output:**
 ```
-out/make/test-app-1.0.0-arm64.dmg     # The DMG file
-out/make/zip/darwin/arm64/...          # Also produces a ZIP
+out/make/LogicMonkey-1.0.0-arm64.dmg   # The DMG file
+out/make/zip/darwin/arm64/...           # Also produces a ZIP
+```
+
+### Build AND publish to GitHub Releases
+```bash
+GITHUB_TOKEN=$(gh auth token) npm run publish
+```
+This builds the app, then uploads the `.dmg` and `.zip` to a **draft** GitHub Release.
+
+To make the release public:
+```bash
+gh release edit v1.0.0 --repo george-aristides/LogicMonkey --draft=false
 ```
 
 ### Package only (no DMG, just the .app)
 ```bash
 npm run package
 ```
-Output: `out/test-app-darwin-arm64/test-app.app`
+Output: `out/LogicMonkey-darwin-arm64/LogicMonkey.app`
 
 ---
 
-## How to Install the Built App
+## How to Send the App to Someone
 
-1. Double-click `test-app-1.0.0-arm64.dmg` to mount it
-2. Drag `test-app.app` into the Applications folder
-3. Open from Applications (or Spotlight search "test-app")
-4. **First launch:** macOS will show "test-app is from an unidentified developer"
+### First time
+1. Send them this link: https://github.com/george-aristides/LogicMonkey/releases
+2. They click the `.dmg` file to download it
+3. They double-click the `.dmg` to mount it
+4. They drag `LogicMonkey.app` into the Applications folder
+5. **First launch:** macOS will show "LogicMonkey is from an unidentified developer"
    - Right-click the app → "Open" → click "Open" in the dialog
    - This only happens once. After that it opens normally.
 
+### Sending updates
+1. Make your code changes
+2. Bump the version in `package.json` (e.g., `"version": "1.1.0"`)
+3. Run: `GITHUB_TOKEN=$(gh auth token) npm run publish`
+4. Publish the draft: `gh release edit v1.1.0 --repo george-aristides/LogicMonkey --draft=false`
+5. Next time the user opens the app while online, they'll see a blue banner:
+   **"Update v1.1.0 available! Download"**
+6. Clicking "Download" opens the GitHub Releases page in their browser
+7. They download the new `.dmg` and drag it to Applications (replaces the old version)
+
 ---
 
-## How to Update the App (Phase 2 — GitHub Releases)
+## How the Auto-Updater Works
 
-This section is for AFTER you set up GitHub publishing. Not needed for local testing.
+Since the app is **not code-signed**, the updater cannot silently install updates. Instead:
 
-### One-time setup
+1. On app launch, `main.js` calls `autoUpdater.checkForUpdates()`
+2. `electron-updater` checks the GitHub Releases API for a version newer than `package.json`'s version
+3. If found, it sends the version number to the renderer via IPC
+4. The renderer shows a blue banner at the top: "Update vX.X.X available! Download"
+5. Clicking "Download" calls `shell.openExternal()` to open the Releases page
+6. The user downloads and installs the new `.dmg` manually
 
-1. **Create a GitHub repo** (public or private)
+**If offline:** The check silently fails (`.catch(() => {})`). The app works normally.
 
-2. **Generate a GitHub Personal Access Token:**
-   - GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
-   - Generate new token with `repo` scope
-   - Save the token securely
-
-3. **Install the GitHub publisher:**
-   ```bash
-   npm install --save-dev @electron-forge/publisher-github
-   ```
-
-4. **Add publisher config to `forge.config.js`:**
-   ```js
-   // Add this after the `makers` array:
-   publishers: [
-     {
-       name: '@electron-forge/publisher-github',
-       config: {
-         repository: {
-           owner: 'YOUR_GITHUB_USERNAME',
-           name: 'YOUR_REPO_NAME'
-         },
-         prerelease: false,
-         draft: true
-       }
-     }
-   ]
-   ```
-
-5. **Install the auto-updater:**
-   ```bash
-   npm install electron-updater
-   ```
-
-6. **Add update check to `src/main.js`:**
-   ```js
-   const { autoUpdater } = require('electron-updater');
-
-   // Add inside app.whenReady().then(() => { ... }):
-   autoUpdater.checkForUpdatesAndNotify();
-   ```
-
-### Publishing a release
-
-```bash
-export GITHUB_TOKEN=your_token_here
-npm run publish
-```
-
-This builds the app AND uploads it to a GitHub Release (as a draft).
-Then go to GitHub → Releases → edit the draft → click "Publish release".
-
-### Publishing an update
-
-1. Bump the version in `package.json` (e.g., `"version": "1.1.0"`)
-2. Make your code changes
-3. Run `npm run publish` again
-4. Publish the new draft release on GitHub
-5. When the user opens the app, it will detect the new version and prompt to update
-
-### How the user gets the app
-
-Send them the URL to your GitHub Releases page:
-```
-https://github.com/YOUR_USERNAME/YOUR_REPO/releases
-```
-They click the `.dmg` file to download, then follow the install steps above.
+**If code-signed in the future:** You can switch to `autoUpdater.autoDownload = true` and `autoUpdater.quitAndInstall()` for fully silent updates.
 
 ---
 
 ## macOS Code Signing (Optional)
 
-Without code signing, macOS shows a warning on first launch. The user can bypass it (right-click → Open), but signing removes the warning entirely.
+Without code signing, macOS shows a warning on first launch. The user can bypass it (right-click → Open), but signing removes the warning entirely and enables silent auto-updates.
 
 **To sign the app:**
 1. Get an Apple Developer account ($99/year) at developer.apple.com
@@ -218,8 +189,6 @@ Without code signing, macOS shows a warning on first launch. The user can bypass
    }
    ```
 
-This is optional and can be added later. The app works fine without it.
-
 ---
 
 ## Troubleshooting
@@ -227,10 +196,12 @@ This is optional and can be added later. The app works fine without it.
 | Problem | Solution |
 |---|---|
 | `node: command not found` | Run `brew install node` |
-| `npm run make` fails | Delete `node_modules/` and `out/`, then run `npm install` and `npm run make` again |
-| DMG won't open on another Mac | The DMG is built for arm64 (Apple Silicon). Intel Macs need a separate build — add `--arch=x64` to the make command |
-| "App is damaged" error | Right-click → Open → Open. Or: `xattr -cr /Applications/test-app.app` in Terminal |
-| App window is blank | Check that `src/index.html` and `src/renderer.js` exist and webpack config points to them |
+| `npm run make` fails | Delete `node_modules/` and `out/`, then `npm install && npm run make` |
+| `GITHUB_TOKEN` error on publish | Use `GITHUB_TOKEN=$(gh auth token) npm run publish` |
+| DMG won't open on another Mac | Built for arm64 (Apple Silicon). Intel Macs need `--arch=x64` |
+| "App is damaged" error | Right-click → Open → Open. Or: `xattr -cr /Applications/LogicMonkey.app` |
+| App window is blank | Check `src/index.html` and `src/renderer.js` exist |
+| Update banner doesn't appear | App must be installed from a built `.dmg` (not `npm start`). Also needs internet. |
 
 ---
 
@@ -238,9 +209,10 @@ This is optional and can be added later. The app works fine without it.
 
 | File | What changed | Why |
 |---|---|---|
-| `src/index.html` | Replaced default "Hello World" with heading + toggle button | App functionality |
-| `src/index.css` | Rewrote styles for light/dark theme with CSS transitions | App functionality |
-| `src/renderer.js` | Replaced console.log with toggle button click handler | App functionality |
-| `src/main.js` | Commented out `openDevTools()` | Don't show dev tools in production |
-| `forge.config.js` | Added `@electron-forge/maker-dmg` to makers array | Produce a `.dmg` instead of just a `.zip` |
-| `package.json` | (auto-updated by npm install) Added `@electron-forge/maker-dmg` to devDependencies | Required for DMG builds |
+| `src/index.html` | Replaced "Hello World" with "LogicMonkey" heading + toggle button | App functionality |
+| `src/index.css` | Light/dark theme styles + update banner CSS | App functionality + update UX |
+| `src/renderer.js` | Toggle handler + update banner listener | App functionality + update UX |
+| `src/main.js` | Added `electron-updater`, IPC for updates, `shell.openExternal` | Auto-update detection |
+| `src/preload.js` | Added `contextBridge` exposing update API | Secure IPC bridge |
+| `forge.config.js` | Added DMG maker + GitHub publisher | Distribution pipeline |
+| `package.json` | Renamed to `logic-monkey`/`LogicMonkey`, added dependencies | Branding + features |
