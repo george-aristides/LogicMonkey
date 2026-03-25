@@ -90,3 +90,7 @@ typings/
 
 # Electron-Forge
 out/
+
+# Scripts with database credentials
+scripts/run-schema.js
+scripts/verify-seed.js

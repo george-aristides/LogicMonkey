@@ -1,0 +1,13 @@
+[
+  { "name": "Must Be True / Inference", "slug": "must-be-true", "display_order": 1, "description": "Identify what must be true based on the given information" },
+  { "name": "Flaw", "slug": "flaw", "display_order": 2, "description": "Identify the logical error in the argument" },
+  { "name": "Sufficient Assumption", "slug": "sufficient-assumption", "display_order": 3, "description": "Find the assumption that would make the conclusion follow logically" },
+  { "name": "Necessary Assumption", "slug": "necessary-assumption", "display_order": 4, "description": "Find the assumption required for the argument to hold" },
+  { "name": "Strengthen", "slug": "strengthen", "display_order": 5, "description": "Find what would make the argument more convincing" },
+  { "name": "Weaken", "slug": "weaken", "display_order": 6, "description": "Find what would undermine the argument" },
+  { "name": "Method of Reasoning / Role of a Statement", "slug": "method-of-reasoning", "display_order": 7, "description": "Describe the argumentative technique used" },
+  { "name": "Parallel Reasoning / Parallel Flaw", "slug": "parallel-reasoning", "display_order": 8, "description": "Find the argument with the same logical structure" },
+  { "name": "Point at Issue / Disagree", "slug": "point-at-issue", "display_order": 9, "description": "Identify the point of disagreement between two speakers" },
+  { "name": "Principle (Identify / Apply)", "slug": "principle", "display_order": 10, "description": "Identify or apply a general principle" },
+  { "name": "Resolve the Paradox / Explain", "slug": "resolve-paradox", "display_order": 11, "description": "Find what explains an apparent contradiction" }
+]
